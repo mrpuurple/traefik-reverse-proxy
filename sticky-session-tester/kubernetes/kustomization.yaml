@@ -10,4 +10,4 @@ resources:
   - service-cookie.yaml
   - ingressroute-roundrobin.yaml
   - ingressroute-clientip.yaml
-  - httproute-cookie.yaml
+  - ingressroute-cookie.yaml

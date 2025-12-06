@@ -147,8 +147,10 @@ make test
   - `sticky-tester-clientip` - sessionAffinity: ClientIP (1 hour timeout)
   - `sticky-tester-cookie` - sessionAffinity: None (Traefik handles it)
 - **Traefik Middleware**: Path rewriting from `/app` to `/sticky-app`
-- **HTTPRoutes**: Two Gateway API HTTPRoutes for round-robin and clientip
-- **IngressRoute**: One Traefik IngressRoute for cookie-based affinity
+- **IngressRoutes**: Three Traefik IngressRoutes (one per scenario)
+  - `sticky-tester-roundrobin` - Round-robin load balancing
+  - `sticky-tester-clientip` - ClientIP session affinity
+  - `sticky-tester-cookie` - Cookie-based sticky sessions
 
 ### Path Rewriting
 
@@ -586,16 +588,16 @@ sticky-session-tester/
     ├── service-roundrobin.yaml
     ├── service-clientip.yaml
     ├── service-cookie.yaml
-    ├── httproute-roundrobin.yaml
-    ├── httproute-clientip.yaml
-    └── httproute-cookie.yaml
+    ├── ingressroute-roundrobin.yaml
+    ├── ingressroute-clientip.yaml
+    └── ingressroute-cookie.yaml
 ```
 
 ## Resources
 
 - [Kubernetes Service Session Affinity](https://kubernetes.io/docs/reference/networking/virtual-ips/#session-affinity)
 - [Traefik Sticky Sessions](https://doc.traefik.io/traefik/routing/services/#sticky-sessions)
-- [Gateway API HTTPRoute](https://gateway-api.sigs.k8s.io/api-types/httproute/)
+- [Traefik IngressRoute](https://doc.traefik.io/traefik/routing/providers/kubernetes-crd/)
 - [Spring Boot Actuator](https://docs.spring.io/spring-boot/docs/current/reference/html/actuator.html)
 
 ## License
