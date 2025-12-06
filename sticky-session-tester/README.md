@@ -95,12 +95,26 @@ Open your browser to test the three scenarios:
 
 ### Test 2: ClientIP Session Affinity
 
+#### Test 2a: Through Traefik (demonstrates the limitation)
+
 ```sh
 # Visit http://clientip.localhost/app/
 # Refresh multiple times - background will change colors
 ```
 
 **Expected**: ⚠️ **Different pods** (round-robin behavior). ClientIP affinity is configured but doesn't work because all requests come from Traefik's pod IP, not your browser IP. This demonstrates why ClientIP affinity fails behind reverse proxies.
+
+#### Test 2b: Direct Access (demonstrates it actually works)
+
+```sh
+# Port-forward to access the service directly (bypassing Traefik)
+kubectl port-forward -n sticky-session-tester service/sticky-tester-clientip 9090:80 &
+
+# Visit http://localhost:9090/sticky-app/
+# Refresh multiple times - background will stay the same color!
+```
+
+**Expected**: ✅ **Same pod** on every refresh! Request count increments (1, 2, 3...). When accessed directly without a reverse proxy, ClientIP affinity works perfectly. This proves the feature itself works - it's just incompatible with proxy architectures.
 
 ### Test 3: Cookie-Based Sticky Sessions
 
