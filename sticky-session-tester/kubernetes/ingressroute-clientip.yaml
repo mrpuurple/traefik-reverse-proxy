@@ -1,0 +1,16 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: sticky-tester-clientip
+  namespace: sticky-session-tester
+spec:
+  entryPoints:
+    - web
+  routes:
+  - match: Host(`clientip.localhost`) && PathPrefix(`/app`)
+    kind: Rule
+    middlewares:
+    - name: rewrite-app-to-sticky
+    services:
+    - name: sticky-tester-clientip
+      port: 80

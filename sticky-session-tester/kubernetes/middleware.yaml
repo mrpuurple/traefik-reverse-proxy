@@ -1,0 +1,9 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: rewrite-app-to-sticky
+  namespace: sticky-session-tester
+spec:
+  replacePathRegex:
+    regex: "^/app(/.*)?$"
+    replacement: "/sticky-app$1"

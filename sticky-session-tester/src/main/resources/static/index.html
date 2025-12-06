@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sticky Session Tester</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1 id="podName">Loading...</h1>
+
+            <div class="section">
+                <h2>Pod Information</h2>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="label">Pod Name:</span>
+                        <span class="value" id="podNameValue">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">Pod IP:</span>
+                        <span class="value" id="podIp">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">Namespace:</span>
+                        <span class="value" id="podNamespace">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">Container:</span>
+                        <span class="value" id="containerName">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">Service:</span>
+                        <span class="value" id="serviceName">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>Session Information</h2>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="label">Session ID:</span>
+                        <span class="value" id="sessionId">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">Created:</span>
+                        <span class="value" id="creationTime">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">Last Accessed:</span>
+                        <span class="value" id="lastAccessedTime">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">Request Count:</span>
+                        <span class="value" id="requestCount">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">Sticky Cookie:</span>
+                        <span class="value" id="stickyCookie">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button id="refreshBtn" class="btn btn-primary">Refresh Now</button>
+                <button id="autoRefreshBtn" class="btn btn-secondary">Enable Auto-Refresh</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>

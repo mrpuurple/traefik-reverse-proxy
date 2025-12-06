@@ -1,0 +1,21 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: sticky-tester-cookie
+  namespace: sticky-session-tester
+spec:
+  entryPoints:
+    - web
+  routes:
+  - match: Host(`cookie.localhost`) && PathPrefix(`/app`)
+    kind: Rule
+    middlewares:
+    - name: rewrite-app-to-sticky
+    services:
+    - name: sticky-tester-cookie
+      port: 80
+      sticky:
+        cookie:
+          name: sticky-cookie
+          httpOnly: true
+          secure: false
