@@ -1,0 +1,320 @@
+# Prometheus Configuration for Docker Desktop Kubernetes
+# Optimized for local development environment
+
+# RBAC configuration
+rbac:
+  create: true
+
+# Service Account
+serviceAccounts:
+  server:
+    create: true
+    name: ""
+    annotations: {}
+
+# Prometheus Server configuration
+server:
+  name: server
+
+  # Container image
+  image:
+    repository: quay.io/prometheus/prometheus
+    tag: ""  # Uses appVersion from Chart.yaml
+    pullPolicy: IfNotPresent
+
+  # Retention and storage
+  retention: "15d"  # Keep metrics for 15 days (sufficient for local dev)
+
+  # Global scrape configuration
+  global:
+    scrape_interval: 30s      # Scrape targets every 30 seconds
+    scrape_timeout: 10s       # Timeout after 10 seconds
+    evaluation_interval: 30s  # Evaluate rules every 30 seconds
+
+  # Resource limits for local development
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+
+  # Persistent storage configuration
+  persistentVolume:
+    enabled: true
+    accessModes:
+      - ReadWriteOnce
+    size: 8Gi
+    storageClass: ""  # Use default storage class
+
+  # Service configuration - LoadBalancer for Docker Desktop
+  service:
+    enabled: true
+    type: LoadBalancer
+    servicePort: 80
+    annotations: {}
+    labels: {}
+
+  # Security context
+  securityContext:
+    runAsUser: 65534
+    runAsNonRoot: true
+    runAsGroup: 65534
+    fsGroup: 65534
+
+  # Enable administrative API
+  extraFlags:
+    - web.enable-lifecycle
+    - web.enable-admin-api
+
+  # Ingress configuration (optional - use Traefik)
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    annotations: {}
+    hosts:
+      - prometheus.localhost
+    path: /
+    pathType: Prefix
+
+  # Readiness and liveness probes
+  readinessProbeInitialDelay: 30
+  readinessProbePeriodSeconds: 5
+  readinessProbeTimeout: 4
+  readinessProbeFailureThreshold: 3
+  readinessProbeSuccessThreshold: 1
+
+  livenessProbeInitialDelay: 30
+  livenessProbePeriodSeconds: 15
+  livenessProbeTimeout: 10
+  livenessProbeFailureThreshold: 3
+  livenessProbeSuccessThreshold: 1
+
+# Alert Manager - Disabled for basic setup
+alertmanager:
+  enabled: false
+
+# Kube State Metrics - Monitor Kubernetes cluster state
+kube-state-metrics:
+  enabled: true
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+# Prometheus Node Exporter - DISABLED for Docker Desktop
+# Docker Desktop has limitations with hostPID mounts that prevent node-exporter from running
+# Instead, we use kubelet's built-in cAdvisor metrics (see kubernetes-cadvisor scrape config below)
+prometheus-node-exporter:
+  enabled: false
+
+# Prometheus Pushgateway - Disabled for basic setup
+prometheus-pushgateway:
+  enabled: false
+
+# ConfigMap Reload - Automatically reload config changes
+configmapReload:
+  prometheus:
+    enabled: true
+    image:
+      repository: quay.io/prometheus-operator/prometheus-config-reloader
+      tag: v0.87.0
+      pullPolicy: IfNotPresent
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        cpu: 100m
+        memory: 64Mi
+
+# Server Configuration Files
+serverFiles:
+  ## Alerts configuration
+  ## Ref: https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/
+  alerting_rules.yml: {}
+
+  ## Recording rules - Create node_* metrics from cAdvisor for dashboard compatibility
+  ## Ref: https://prometheus.io/docs/prometheus/latest/configuration/recording_rules/
+  recording_rules.yml:
+    groups:
+      - name: node_exporter_compat
+        interval: 30s
+        rules:
+          # CPU metrics - total seconds per mode from container metrics for root container
+          - record: node_cpu_seconds_total
+            expr: |
+              label_replace(
+                container_cpu_usage_seconds_total{id="/"},
+                "mode", "idle", "", ""
+              )
+
+          # Memory metrics from machine-level cAdvisor metrics
+          - record: node_memory_MemTotal_bytes
+            expr: machine_memory_bytes
+
+          - record: node_memory_MemFree_bytes
+            expr: |
+              machine_memory_bytes - container_memory_usage_bytes{id="/"}
+
+          - record: node_memory_Buffers_bytes
+            expr: container_memory_cache{id="/"} * 0
+
+          - record: node_memory_Cached_bytes
+            expr: container_memory_cache{id="/"}
+
+          # Filesystem metrics for root container
+          - record: node_filesystem_size_bytes
+            expr: |
+              label_replace(
+                container_fs_limit_bytes{id="/"},
+                "mountpoint", "/", "", ""
+              )
+
+          - record: node_filesystem_avail_bytes
+            expr: |
+              label_replace(
+                container_fs_limit_bytes{id="/"} - container_fs_usage_bytes{id="/"},
+                "mountpoint", "/", "", ""
+              )
+
+          # Load average (use kubelet metric as proxy)
+          - record: node_load1
+            expr: |
+              sum(rate(container_cpu_usage_seconds_total{id="/"}[1m])) by (instance)
+
+          # Disk I/O time
+          - record: node_disk_io_time_seconds_total
+            expr: |
+              label_replace(
+                sum(rate(container_fs_io_time_seconds_total{id="/"}[5m])) by (instance),
+                "device", "vda", "", ""
+              )
+
+          # Pod count metrics - alias kubelet_running_pods to kubelet_running_pod_count for dashboard compatibility
+          - record: kubelet_running_pod_count
+            expr: kubelet_running_pods
+
+  ## Scrape configurations
+  ## Ref: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#scrape_config
+  prometheus.yml:
+    rule_files:
+      - /etc/config/recording_rules.yml
+      - /etc/config/alerting_rules.yml
+
+    scrape_configs:
+      # Scrape Prometheus itself
+      - job_name: prometheus
+        static_configs:
+          - targets:
+              - localhost:9090
+
+      # Scrape Kubernetes API server
+      - job_name: kubernetes-apiservers
+        kubernetes_sd_configs:
+          - role: endpoints
+        scheme: https
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+            action: keep
+            regex: default;kubernetes;https
+
+      # Scrape Kubernetes nodes (kubelet metrics)
+      - job_name: kubernetes-nodes
+        kubernetes_sd_configs:
+          - role: node
+        scheme: https
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          # Docker Desktop kubelet certificates don't have IP SANs
+          insecure_skip_verify: true
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        relabel_configs:
+          - action: labelmap
+            regex: __meta_kubernetes_node_label_(.+)
+
+      # Scrape Kubernetes cAdvisor (container metrics - alternative to node-exporter for Docker Desktop)
+      - job_name: kubernetes-cadvisor
+        kubernetes_sd_configs:
+          - role: node
+        scheme: https
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          # Docker Desktop kubelet certificates don't have IP SANs
+          insecure_skip_verify: true
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        metrics_path: /metrics/cadvisor
+        relabel_configs:
+          - action: labelmap
+            regex: __meta_kubernetes_node_label_(.+)
+
+      # Scrape Kubernetes pods
+      - job_name: kubernetes-pods
+        kubernetes_sd_configs:
+          - role: pod
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: true
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+            action: replace
+            regex: ([^:]+)(?::\d+)?;(\d+)
+            replacement: $1:$2
+            target_label: __address__
+          - action: labelmap
+            regex: __meta_kubernetes_pod_label_(.+)
+          - source_labels: [__meta_kubernetes_namespace]
+            action: replace
+            target_label: kubernetes_namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            action: replace
+            target_label: kubernetes_pod_name
+
+      # Scrape Kubernetes services
+      - job_name: kubernetes-services
+        kubernetes_sd_configs:
+          - role: service
+        metrics_path: /probe
+        params:
+          module: [http_2xx]
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_probe]
+            action: keep
+            regex: true
+          - source_labels: [__address__]
+            target_label: __param_target
+          - target_label: __address__
+            replacement: blackbox-exporter:9115
+          - source_labels: [__param_target]
+            target_label: instance
+          - action: labelmap
+            regex: __meta_kubernetes_service_label_(.+)
+          - source_labels: [__meta_kubernetes_namespace]
+            target_label: kubernetes_namespace
+          - source_labels: [__meta_kubernetes_service_name]
+            target_label: kubernetes_name
+
+      # Scrape Traefik metrics
+      - job_name: traefik
+        static_configs:
+          - targets:
+              - traefik.traefik.svc.cluster.local:8080
+        metrics_path: /metrics
+
+      # Scrape kube-state-metrics
+      - job_name: kube-state-metrics
+        static_configs:
+          - targets:
+              - prometheus-kube-state-metrics.prometheus.svc.cluster.local:8080
+        metrics_path: /metrics

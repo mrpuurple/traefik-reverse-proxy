@@ -1,0 +1,209 @@
+# Traefik Configuration for Docker Desktop Kubernetes
+# Optimized for local development environment
+
+# Global configuration
+globalArguments:
+  - "--global.checknewversion=false"
+  - "--global.sendanonymoususage=false"
+
+# Additional arguments for Traefik
+additionalArguments:
+  # Enable debug logging for local development
+  - "--log.level=INFO"
+  # Access logs for debugging
+  - "--accesslog=true"
+  - "--accesslog.format=json"
+  - "--accesslog.fields.defaultmode=keep"
+
+# Deployment configuration
+deployment:
+  enabled: true
+  kind: Deployment
+  replicas: 1
+
+  # Pod annotations for better observability
+  podAnnotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+    prometheus.io/path: "/metrics"
+
+# Ports configuration
+ports:
+  # Traefik dashboard and API port
+  traefik:
+    port: 8080
+    expose:
+      default: true  # Expose dashboard in local environment
+    exposedPort: 8080
+    protocol: TCP
+
+  # HTTP entrypoint
+  web:
+    port: 8000
+    expose:
+      default: true
+    exposedPort: 80
+    protocol: TCP
+    # Redirect HTTP to HTTPS (optional - uncomment if using TLS)
+    # redirectTo:
+    #   port: websecure
+    #   scheme: https
+    #   permanent: true
+
+  # HTTPS entrypoint
+  websecure:
+    port: 8443
+    expose:
+      default: true
+    exposedPort: 443
+    protocol: TCP
+    # Enable TLS
+    tls:
+      enabled: true
+      # Use cert-manager or provide certificates
+      # certResolver: letsencrypt
+    # HTTP/3 support (optional)
+    http3:
+      enabled: false
+
+# Service configuration - LoadBalancer for Docker Desktop
+service:
+  enabled: true
+  single: true
+  type: LoadBalancer
+  # Docker Desktop automatically provisions localhost LoadBalancer
+  annotations: {}
+  labels: {}
+
+# IngressClass configuration
+ingressClass:
+  enabled: true
+  isDefaultClass: true
+  name: traefik
+
+# IngressRoute configuration
+ingressRoute:
+  dashboard:
+    enabled: true
+    # Expose dashboard via IngressRoute
+    annotations: {}
+    labels: {}
+    # Match rule for dashboard access
+    matchRule: Host(`traefik.localhost`)
+    entryPoints: ["web"]
+    # Add basic auth middleware for security (optional)
+    # middlewares:
+    #   - name: dashboard-auth
+
+# Enable Traefik dashboard
+dashboard:
+  enabled: true
+  # Alternative to IngressRoute - expose via port-forward
+  # kubectl port-forward -n traefik service/traefik 8080:8080
+
+# Providers configuration
+providers:
+  kubernetesCRD:
+    enabled: true
+    allowCrossNamespace: true
+    allowExternalNameServices: true
+  kubernetesIngress:
+    enabled: true
+    allowExternalNameServices: true
+    publishedService:
+      enabled: false
+
+# Logs configuration
+logs:
+  general:
+    level: INFO
+    format: json
+  access:
+    enabled: true
+    format: json
+    fields:
+      general:
+        defaultmode: keep
+      headers:
+        defaultmode: drop
+
+# Metrics configuration (Prometheus)
+metrics:
+  prometheus:
+    enabled: true
+    entryPoint: traefik
+    addEntryPointsLabels: true
+    addRoutersLabels: true
+    addServicesLabels: true
+
+# Resources - Light limits for local development
+resources:
+  requests:
+    cpu: "100m"
+    memory: "128Mi"
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+
+# Security context
+securityContext:
+  capabilities:
+    drop: [ALL]
+  readOnlyRootFilesystem: true
+  runAsGroup: 65532
+  runAsNonRoot: true
+  runAsUser: 65532
+
+podSecurityContext:
+  fsGroup: 65532
+  fsGroupChangePolicy: "OnRootMismatch"
+
+# Persistence for Let's Encrypt certificates (if using ACME)
+persistence:
+  enabled: false
+  # Uncomment if using Let's Encrypt
+  # enabled: true
+  # accessMode: ReadWriteOnce
+  # size: 128Mi
+  # path: /data
+  # storageClass: ""
+
+# RBAC configuration
+rbac:
+  enabled: true
+  namespaced: false
+
+# Service Account - specify existing or leave empty for auto-generation
+serviceAccount:
+  name: ""
+
+# Pod security policy (deprecated in k8s 1.25+)
+podSecurityPolicy:
+  enabled: false
+
+# Affinity and node selection
+affinity: {}
+nodeSelector: {}
+tolerations: []
+
+# Update strategy
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 0
+    maxSurge: 1
+
+# Health checks
+livenessProbe:
+  failureThreshold: 3
+  initialDelaySeconds: 2
+  periodSeconds: 10
+  successThreshold: 1
+  timeoutSeconds: 2
+
+readinessProbe:
+  failureThreshold: 1
+  initialDelaySeconds: 2
+  periodSeconds: 10
+  successThreshold: 1
+  timeoutSeconds: 2

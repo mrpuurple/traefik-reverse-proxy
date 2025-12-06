@@ -1,0 +1,16 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: language-glossary
+  namespace: default
+  labels:
+    app: language-glossary
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`glossary.localhost`)
+      kind: Rule
+      services:
+        - name: language-glossary
+          port: 80
