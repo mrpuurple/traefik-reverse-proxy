@@ -79,7 +79,7 @@ Open your browser to test the three scenarios:
 ### 3. Observe the Behavior
 
 - **Round-Robin**: Background color changes on each refresh (different pods)
-- **ClientIP**: Same background color on every refresh (same pod)
+- **ClientIP**: ⚠️ **Also round-robin** - ClientIP affinity doesn't work behind Traefik (demonstrates the limitation)
 - **Cookie**: Same background color with cookie present, may change when cookie deleted
 
 ## Testing Scenarios
@@ -97,10 +97,10 @@ Open your browser to test the three scenarios:
 
 ```sh
 # Visit http://clientip.localhost/app/
-# Refresh multiple times - background should stay the same color
+# Refresh multiple times - background will change colors
 ```
 
-**Expected**: Same pod (and color) for all requests from your IP.
+**Expected**: ⚠️ **Different pods** (round-robin behavior). ClientIP affinity is configured but doesn't work because all requests come from Traefik's pod IP, not your browser IP. This demonstrates why ClientIP affinity fails behind reverse proxies.
 
 ### Test 3: Cookie-Based Sticky Sessions
 
