@@ -6,6 +6,36 @@ A Spring Boot application designed to test and demonstrate **three levels of ses
 2. **ClientIP Affinity** - Kubernetes service-level session persistence based on source IP
 3. **Cookie Affinity** - Traefik application-level sticky sessions using HTTP cookies
 
+## Visual Demonstrations
+
+### Cookie Affinity (Sticky Sessions) ✅
+
+Watch how requests **stick to the same pod** when the sticky cookie is present:
+
+![Cookie Affinity Demo](demos/cookie-demo.gif)
+
+**What you see:**
+- 🔴 Background stays the same color (sticky to one pod)
+- ✓ "Sticky Cookie: Present" indicator
+- 📈 Request count incrementing (session persists)
+- 🎯 Same Pod Name on every refresh
+
+---
+
+### Round-Robin Load Balancing 🔄
+
+Watch how requests are **distributed across different pods** without session affinity:
+
+![Round-Robin Demo](demos/roundrobin-demo.gif)
+
+**What you see:**
+- 🌈 Background color changes (red → green → blue)
+- ✗ "Sticky Cookie: Not Present" indicator
+- 🔄 Session ID changing between requests
+- 🎲 Different Pod Names on each refresh
+
+---
+
 ## Features
 
 - **Visual Pod Identification**: Each pod displays a distinct background color (red/green/blue)
