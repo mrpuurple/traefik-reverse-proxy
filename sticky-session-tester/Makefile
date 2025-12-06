@@ -39,8 +39,14 @@ hosts: ## Add /etc/hosts entries
 test: ## Run tests against deployed application
 	@echo "Testing Round-Robin..."
 	@for i in 1 2 3 4 5; do curl -s http://roundrobin.localhost/app/api/info | jq -r .podName; done
-	@echo "\nTesting ClientIP Affinity..."
+	@echo "\nTesting ClientIP Affinity (via Traefik - shows limitation)..."
 	@for i in 1 2 3 4 5; do curl -s http://clientip.localhost/app/api/info | jq -r .podName; done
+	@echo "\nTesting ClientIP Affinity (direct via port-forward - shows it works)..."
+	@kubectl port-forward -n sticky-session-tester service/sticky-tester-clientip 9090:80 >/dev/null 2>&1 & \
+	PF_PID=$$!; \
+	sleep 2; \
+	for i in 1 2 3 4 5; do curl -s http://localhost:9090/sticky-app/api/info | jq -r .podName; done; \
+	kill $$PF_PID 2>/dev/null || true
 	@echo "\nTesting Cookie Affinity..."
 	@curl -c /tmp/cookies.txt -s http://cookie.localhost/app/api/info | jq -r .podName
 	@for i in 2 3 4 5; do curl -b /tmp/cookies.txt -s http://cookie.localhost/app/api/info | jq -r .podName; done
