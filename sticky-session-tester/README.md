@@ -403,8 +403,36 @@ sequenceDiagram
 **How it works:**
 - Kubernetes **kube-proxy** tracks source IP addresses
 - All requests from the same IP go to the same pod
-- Session persists for 1 hour (configurable with `timeoutSeconds`)
+- Session persists for a configurable timeout period
 - Works at the network layer (no application awareness)
+
+**Configuration options:**
+
+Kubernetes Services support only **two** `sessionAffinity` values:
+
+1. **`None`** (default) - No session affinity, pure load balancing
+2. **`ClientIP`** - IP-based affinity with configurable timeout
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-service
+spec:
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 3600  # Range: 1-86400 seconds (1 sec to 24 hours)
+                            # Default: 10800 (3 hours)
+```
+
+**Available session affinity options:**
+
+- ✅ `None` - No affinity (default)
+- ✅ `ClientIP` - Source IP-based affinity
+- ❌ Cookie-based (NOT available - requires ingress controller)
+- ❌ Header-based (NOT available)
+- ❌ URL parameter-based (NOT available)
 
 **Why it shows round-robin in our tests:**
 ```
