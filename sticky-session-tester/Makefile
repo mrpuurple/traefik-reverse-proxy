@@ -23,15 +23,18 @@ deploy-manual: ## Deploy to Kubernetes manually (without Kustomize)
 	kubectl apply -f kubernetes/service-roundrobin.yaml
 	kubectl apply -f kubernetes/service-clientip.yaml
 	kubectl apply -f kubernetes/service-cookie.yaml
-	kubectl apply -f kubernetes/httproute-roundrobin.yaml
-	kubectl apply -f kubernetes/httproute-clientip.yaml
-	kubectl apply -f kubernetes/httproute-cookie.yaml
+	kubectl apply -f kubernetes/ingressroute-roundrobin.yaml
+	kubectl apply -f kubernetes/ingressroute-clientip.yaml
+	kubectl apply -f kubernetes/ingressroute-cookie.yaml
 
 hosts: ## Add /etc/hosts entries
 	@echo "Adding hosts entries (requires sudo)..."
-	@grep -q "roundrobin.localhost" /etc/hosts || echo "127.0.0.1 roundrobin.localhost" | sudo tee -a /etc/hosts
-	@grep -q "clientip.localhost" /etc/hosts || echo "127.0.0.1 clientip.localhost" | sudo tee -a /etc/hosts
-	@grep -q "cookie.localhost" /etc/hosts || echo "127.0.0.1 cookie.localhost" | sudo tee -a /etc/hosts
+	@[ -s /etc/hosts ] && [ -z "$$(tail -c1 /etc/hosts)" ] || echo "" | sudo tee -a /etc/hosts > /dev/null
+	@grep -q "roundrobin.localhost" /etc/hosts || echo "127.0.0.1 roundrobin.localhost" | sudo tee -a /etc/hosts > /dev/null
+	@grep -q "clientip.localhost" /etc/hosts || echo "127.0.0.1 clientip.localhost" | sudo tee -a /etc/hosts > /dev/null
+	@grep -q "cookie.localhost" /etc/hosts || echo "127.0.0.1 cookie.localhost" | sudo tee -a /etc/hosts > /dev/null
+	@echo "✓ Hosts entries added"
+	@echo "Note: clientip.localhost demonstrates the LIMITATION (use port-forward to see it working)"
 
 test: ## Run tests against deployed application
 	@echo "Testing Round-Robin..."
@@ -47,8 +50,6 @@ status: ## Check deployment status
 	@kubectl get pods -n sticky-session-tester
 	@echo "\nServices:"
 	@kubectl get svc -n sticky-session-tester
-	@echo "\nHTTPRoutes:"
-	@kubectl get httproute -n sticky-session-tester
 	@echo "\nIngressRoutes:"
 	@kubectl get ingressroute -n sticky-session-tester
 	@echo "\nMiddleware:"
