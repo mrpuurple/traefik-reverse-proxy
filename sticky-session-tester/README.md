@@ -110,8 +110,17 @@ Open your browser to test the three scenarios:
 # Port-forward to access the service directly (bypassing Traefik)
 kubectl port-forward -n sticky-session-tester service/sticky-tester-clientip 9090:80 &
 
-# Visit http://localhost:9090/sticky-app/
+# Browser test: Visit http://localhost:9090/sticky-app/
 # Refresh multiple times - background will stay the same color!
+
+# Command-line test: Make multiple requests
+for i in {1..10}; do
+  curl -s http://localhost:9090/sticky-app/api/info | jq -r '.podName'
+done
+# All 10 requests should show the SAME pod name
+
+# Stop the port-forward when done
+pkill -f "port-forward.*sticky-tester-clientip"
 ```
 
 **Expected**: ✅ **Same pod** on every refresh! Request count increments (1, 2, 3...). When accessed directly without a reverse proxy, ClientIP affinity works perfectly. This proves the feature itself works - it's just incompatible with proxy architectures.
