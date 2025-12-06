@@ -1,0 +1,134 @@
+# Grafana Helm Chart Configuration
+# Chart: grafana/grafana
+# Version: 10.3.0
+# App Version: 12.3.0
+#
+# This values file contains Docker Desktop specific overrides
+# Full configuration: https://artifacthub.io/packages/helm/grafana/grafana
+
+# Admin credentials
+# IMPORTANT: Change these default credentials after deployment
+adminUser: admin
+adminPassword: changeme
+
+# Persistence for dashboards and data
+persistence:
+  enabled: true
+  type: pvc
+  size: 2Gi
+  storageClassName: ""  # Use default storage class
+
+# Service configuration - LoadBalancer for Docker Desktop
+service:
+  enabled: true
+  type: LoadBalancer
+  port: 80
+  targetPort: 3000
+  annotations: {}
+
+# Ingress configuration for Traefik
+ingress:
+  enabled: true
+  ingressClassName: traefik
+  annotations: {}
+  hosts:
+    - grafana.localhost
+  path: /
+  pathType: Prefix
+
+# Resource limits optimized for local development
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Datasources - Prometheus pre-configured
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        url: http://prometheus-server.prometheus.svc.cluster.local
+        access: proxy
+        isDefault: true
+        jsonData:
+          timeInterval: 30s
+          httpMethod: POST
+        editable: true
+
+# Dashboard providers - enable dashboard imports
+dashboardProviders:
+  dashboardproviders.yaml:
+    apiVersion: 1
+    providers:
+      - name: 'default'
+        orgId: 1
+        folder: ''
+        type: file
+        disableDeletion: false
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards/default
+
+# Pre-load popular dashboards
+dashboards:
+  default:
+    # Kubernetes API Server
+    kubernetes-apiserver:
+      gnetId: 12006
+      revision: 1
+      datasource: Prometheus
+    # Kubernetes System - Kubelet metrics
+    kubernetes-kubelet:
+      gnetId: 13473
+      revision: 1
+      datasource: Prometheus
+    # Traefik Dashboard
+    traefik:
+      gnetId: 4475
+      revision: 5
+      datasource: Prometheus
+    # Prometheus Stats
+    prometheus-stats:
+      gnetId: 2
+      revision: 2
+      datasource: Prometheus
+
+# Grafana configuration
+grafana.ini:
+  server:
+    root_url: "http://grafana.localhost"
+  analytics:
+    check_for_updates: false
+    reporting_enabled: false
+  log:
+    mode: console
+  grafana_net:
+    url: https://grafana.net
+
+# Security context
+securityContext:
+  runAsUser: 472
+  runAsGroup: 472
+  fsGroup: 472
+
+# Plugins to install
+plugins:
+  - grafana-clock-panel
+  - grafana-simple-json-datasource
+  - grafana-piechart-panel
+
+# RBAC
+rbac:
+  create: true
+  pspEnabled: false
+
+# Service account
+serviceAccount:
+  create: true
+  name: ""
+  autoMount: true

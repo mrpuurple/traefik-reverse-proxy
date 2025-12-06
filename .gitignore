@@ -1,0 +1,65 @@
+# MCP Configuration (contains sensitive tokens)
+.mcp.json
+.mcp/
+.playwright-mcp/
+
+# Secrets and sensitive data
+*.key
+*.pem
+*.p12
+*.pfx
+secrets.yaml
+secret-*.yaml
+*-secrets.yaml
+credentials.json
+.env
+.env.*
+!.env.example
+
+# Helm
+charts/
+*.tgz
+requirements.lock
+
+# Kubernetes
+kubeconfig
+*.kubeconfig
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Node modules (for any local tooling)
+node_modules/
+package-lock.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+venv/
+env/
+ENV/
+
+# OS specific
+Thumbs.db
+.DS_Store
