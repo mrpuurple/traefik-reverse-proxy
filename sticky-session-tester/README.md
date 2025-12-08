@@ -277,6 +277,70 @@ kubectl describe ingressroute sticky-tester-cookie -n sticky-session-tester
 kubectl logs -n traefik -l app.kubernetes.io/name=traefik --tail=100
 ```
 
+### Ingress Routes Not Accessible / LoadBalancer Issues
+
+**Symptom**: `make test` fails with "Empty reply from server" or connection refused errors, even though IngressRoutes and pods are healthy.
+
+**Root Cause**: Docker Desktop's LoadBalancer service can sometimes get into a bad state, especially after:
+- Kubernetes cluster restarts
+- Network changes
+- Service updates
+- Long-running Docker Desktop sessions
+
+The LoadBalancer accepts TCP connections but doesn't properly forward HTTP traffic to Traefik.
+
+**Diagnosis**:
+
+```sh
+# Test if LoadBalancer is responding
+curl -v http://localhost/app/api/info
+# If you see "Empty reply from server" → LoadBalancer issue
+
+# Verify Traefik pod is healthy
+kubectl get pods -n traefik
+kubectl logs -n traefik deployment/traefik --tail=50
+
+# Test Traefik internally (should work)
+kubectl exec -n traefik deployment/traefik -- wget -qO- --header="Host: roundrobin.localhost" http://localhost:8000/app/api/info
+# If this works but external access fails → Confirmed LoadBalancer issue
+```
+
+**Quick Fix**:
+
+```sh
+# Option 1: Recreate the LoadBalancer service
+kubectl delete svc -n traefik traefik
+helm upgrade traefik traefik/traefik \
+  --install \
+  --namespace traefik \
+  --version 37.4.0 \
+  --values traefik/values.yaml
+
+# Wait for service to be ready
+kubectl get svc -n traefik traefik
+# Should show EXTERNAL-IP as "localhost"
+
+# Test again
+make test
+```
+
+**Option 2: Use Port-Forward (temporary workaround)**:
+
+```sh
+# Forward Traefik's web port locally
+kubectl port-forward -n traefik service/traefik 8080:80 &
+
+# Update your test to use localhost:8080
+curl -H "Host: roundrobin.localhost" http://localhost:8080/app/api/info
+```
+
+**Prevention**:
+
+If this happens frequently, consider:
+1. Restarting Docker Desktop periodically
+2. Using port-forward for local development instead of LoadBalancer
+3. Checking Docker Desktop resource limits (Settings → Resources)
+
 ### Middleware Not Applied
 
 ```sh

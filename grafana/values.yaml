@@ -116,6 +116,11 @@ securityContext:
   runAsGroup: 472
   fsGroup: 472
 
+# Disable init container for Docker Desktop compatibility
+# The init-chown-data container fails on Docker Desktop due to volume permissions
+initChownData:
+  enabled: false
+
 # Plugins to install
 plugins:
   - grafana-clock-panel
